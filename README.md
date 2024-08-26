@@ -7,6 +7,7 @@ The TempAdmin script has been enhanced to grant temporary administrative rights 
 2. **Admin Rights Management:** Admin rights are granted using the PowerShell `Add-LocalGroupMember` cmdlet, and they are removed using the `Remove-LocalGroupMember` cmdlet. The use of PowerShell avoids the appearance of a command prompt window on the desktop.
 3. **Timer Functionality:** A timer counts down the time remaining for the admin rights. Once the timer runs out, the user is removed from the admin group.
 4. **GUI Interface:** The script includes a graphical interface that displays the time remaining in hours, minutes, and seconds. It also provides an "Add 30 minutes" button to extend the timer.
+5. **Session Management:** Before adding the user to the admin group, the tool will identify and terminate any disconnected sessions on the machine. This ensures that only active sessions receive the temporary admin rights.
 
 **Deployment in SCCM:**
 The script was packaged as an SCCM application and configured to run in the user context. Extensive testing confirmed that the script works as intended, providing a seamless experience for users requiring temporary administrative privileges.
