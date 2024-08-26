@@ -1,27 +1,12 @@
-### Granting Temporary Administrative Rights with a PowerShell Script
+**TempAdmin Script for Granting Temporary Admin Rights**
 
-**Overview:**
-Managing administrative privileges on Windows machines can be a challenge, especially when users require temporary elevated access. To address this, I developed a PowerShell script that grants temporary admin rights to the currently logged-in user, with a built-in timer to automatically revoke these rights after a set period. This solution was deployed using SCCM as an application in the user context and has been tested to work flawlessly.
+The TempAdmin script has been enhanced to grant temporary administrative rights to the currently logged-in user. The script identifies the user by determining the owner of the `explorer.exe` process and adds them to the local administrators' group with a set timer. Once the timer expires, the user is automatically removed from the admin group. Additionally, the script includes a GUI with a button that allows the user to extend the admin rights by 30-minute increments, up to a maximum of 6 hours.
 
-**How It Works:**
-1. **Identifying the Logged-In User:**
-   The script identifies the logged-in user by checking the owner of the `explorer.exe` process. Since `explorer.exe` typically runs under the user's account, this method reliably identifies the active user session.
+**Key Features:**
+1. **User Identification:** The script identifies the currently logged-in user by finding the owner of the `explorer.exe` process.
+2. **Admin Rights Management:** Admin rights are granted using the PowerShell `Add-LocalGroupMember` cmdlet, and they are removed using the `Remove-LocalGroupMember` cmdlet. The use of PowerShell avoids the appearance of a command prompt window on the desktop.
+3. **Timer Functionality:** A timer counts down the time remaining for the admin rights. Once the timer runs out, the user is removed from the admin group.
+4. **GUI Interface:** The script includes a graphical interface that displays the time remaining in hours, minutes, and seconds. It also provides an "Add 30 minutes" button to extend the timer.
 
-2. **Granting Admin Rights:**
-   Once the user is identified, the script adds the user to the local "Administrators" group using the `net localgroup administrators /add` command. This grants the necessary administrative privileges.
-
-3. **Timer and Automatic Removal:**
-   A GUI is presented to the user, showing the remaining time until their admin rights are revoked. The script starts a 30-minute countdown timer, which can be extended by clicking the "Add 30 Minutes" button. The timer can be extended up to a maximum of 6 hours. Once the timer expires, the user is automatically removed from the "Administrators" group, and the script exits.
-
-4. **User Interaction:**
-   The GUI allows the user to monitor the time remaining and add more time if needed. This interaction ensures that users are aware of their temporary privileges and can request additional time without needing to re-run the script.
-
-**Deployment via SCCM:**
-The script was packaged as an SCCM application, with the installation behavior set to run in the user context. This ensures that the script interacts directly with the logged-in user, providing a seamless experience. The application deployment method in SCCM was chosen over the package method due to its superior user interaction capabilities and better management options.
-
-**Testing and Results:**
-After thorough testing, the script and its deployment method were confirmed to work as expected. Users were able to obtain temporary admin rights, extend the timer as needed, and the rights were correctly revoked once the timer ran out. This solution provides a controlled way to grant temporary admin access without compromising security or requiring manual intervention.
-
-**Conclusion:**
-This PowerShell-based solution is a practical and secure way to manage temporary administrative rights on Windows machines. By deploying it via SCCM, it integrates seamlessly into existing IT management processes, ensuring that users have the access they need without exposing the system to unnecessary risks.
-
+**Deployment in SCCM:**
+The script was packaged as an SCCM application and configured to run in the user context. Extensive testing confirmed that the script works as intended, providing a seamless experience for users requiring temporary administrative privileges.
