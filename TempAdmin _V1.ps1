@@ -1,4 +1,4 @@
-﻿# Load the required assemblies for Windows Forms
+# Load the required assemblies for Windows Forms
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
@@ -6,6 +6,28 @@ Add-Type -AssemblyName System.Drawing
 $timerInterval = 30 # Minutes for the timer
 $username = $null
 $maxTime = 360 # 6 hours in minutes
+
+# Function to remove disconnected sessions
+function Remove-DisconnectedSessions {
+    # Get all user sessions on the machine
+    $sessions = query user
+
+    foreach ($session in $sessions) {
+        # Split the session details into an array
+        $sessionDetails = $session -split '\s+'
+
+        # Check if the session state is 'Disc' (Disconnected)
+        if ($sessionDetails[3] -eq 'Disc') {
+            $sessionId = $sessionDetails[2]
+
+            # Log off the disconnected session
+            logoff $sessionId
+            Write-Host "Disconnected session with ID $sessionId has been logged off."
+        }
+    }
+}
+
+Remove-DisconnectedSessions
 
 # Function to get the currently logged-in username
 function Get-CurrentUser {
