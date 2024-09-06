@@ -1,26 +1,33 @@
-# Load the required assemblies for Windows Forms
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
-# Define variables
-$timerInterval = 30 # Minutes for the timer
+$timerInterval = 30 
 $username = $null
-$maxTime = 360 # 6 hours in minutes
+$maxTime = 360 
 
-# Function to remove disconnected sessions
+function Get-AdminGroupName {
+    $language = (Get-WmiObject -Class Win32_OperatingSystem).MUILanguages[0]
+    if ($language -like "en-*") {
+        return "Administrators"
+    } elseif ($language -like 'fr-*') {
+        return "Administrateur"
+    } else {
+        return "Administrators"  # Default to English if the language is unknown
+    }
+}
+
+
 function Remove-DisconnectedSessions {
-    # Get all user sessions on the machine
+    
     $sessions = query user
 
     foreach ($session in $sessions) {
-        # Split the session details into an array
+      
         $sessionDetails = $session -split '\s+'
-
-        # Check if the session state is 'Disc' (Disconnected)
+        
         if ($sessionDetails[3] -eq 'Disc') {
             $sessionId = $sessionDetails[2]
 
-            # Log off the disconnected session
             logoff $sessionId
             Write-Host "Disconnected session with ID $sessionId has been logged off."
         }
@@ -29,42 +36,37 @@ function Remove-DisconnectedSessions {
 
 Remove-DisconnectedSessions
 
-# Function to get the currently logged-in username
 function Get-CurrentUser {
     $explorerProcess = Get-WmiObject Win32_Process -Filter "Name='explorer.exe'"
     $loggedOnUser = $explorerProcess.GetOwner().User
     $loggedOnUser
 }
 
-# Function to add user to local administrators group
 function Add-UserToAdmins {
     param (
-        [string]$username
+        [string]$username,
+        [string]$adminGroup
     )
 
     if ((Get-Service -Name GroupMgmtSvc -ErrorAction SilentlyContinue).status -eq "Running" ) {  
     Set-Service -Name GroupMgmtSvc -StartupType Disabled -Status Stopped
     Get-Service -Name GroupMgmtSvc | Stop-Service -Force -ErrorAction SilentlyContinue}
 
-    Add-LocalGroupMember -Group "Administrators" -Member $username
+    Add-LocalGroupMember -Group $adminGroup -Member $username
 }
 
-# Function to remove user from local administrators group
 function Remove-UserFromAdmins {
     param (
-        [string]$username
+        [string]$username,
+        [string]$adminGroup
     )
     if ((Get-Service -Name GroupMgmtSvc -ErrorAction SilentlyContinue).status -eq "Stopped"){  
     Set-Service -Name GroupMgmtSvc -StartupType Automatic -Status Running
     Get-Service -Name GroupMgmtSvc | Start-Service -ErrorAction SilentlyContinue}
 
-    Remove-LocalGroupMember -Group "Administrators" -Member $username
-    Remove-LocalGroupMember -Group "Administrators" -Member "Domain Users"
-
-
+    Remove-LocalGroupMember -Group $adminGroup -Member $username
 }
 
-# Create the Windows form
 $form = New-Object System.Windows.Forms.Form
 $form.Text = "Temporary Administrator"
 $form.Width = 400
@@ -73,7 +75,7 @@ $form.StartPosition = "CenterScreen"
 $form.Opacity = 0.9
 $form.AllowTransparency = $true
 
-# Create a label to display the countdown title
+# Label  countdown title
 $labelTitle = New-Object System.Windows.Forms.Label
 $labelTitle.AutoSize = $true
 $labelTitle.Location = New-Object System.Drawing.Point(125, 50)
@@ -83,19 +85,19 @@ $labelTitle.Text = "Time Remaining"
 $labelTitle.ForeColor = [System.Drawing.Color]::DarkBlue
 $form.Controls.Add($labelTitle)
 
-# Create a label to display the countdown
+# Label  countdown
 $label = New-Object System.Windows.Forms.Label
 $label.AutoSize = $true
 $label.Location = New-Object System.Drawing.Point(170, 80)
 $label.Width = 260
 $form.Controls.Add($label)
 
-# Create a Timer for countdown logic
+# Timer 
 $timer = New-Object System.Windows.Forms.Timer
 $timer.Interval = 1000 # 1 second interval
 $remainingTime = $timerInterval * 60 # Convert minutes to seconds
 
-# Create a Cancel button
+# Cancel button
 $cancelButton = New-Object System.Windows.Forms.Button
 $cancelButton.Text = "Cancel"
 $cancelButton.Location = New-Object System.Drawing.Point(150, 120)
@@ -104,7 +106,7 @@ $cancelButton.add_Click({
     $result = [System.Windows.Forms.MessageBox]::Show("Remove user from administrators group?", "Confirm", [System.Windows.Forms.MessageBoxButtons]::YesNo)
     if ($result -eq [System.Windows.Forms.DialogResult]::Yes) {
         $timer.Stop()
-        Remove-UserFromAdmins -username $username
+        Remove-UserFromAdmins -username $username -adminGroup $adminGroup
         $form.Close()
     }
     else {
@@ -113,7 +115,7 @@ $cancelButton.add_Click({
 })
 $form.Controls.Add($cancelButton)
 
-# Create an Add 30 Minutes button
+# Add 30 Minutes button
 $addButton = New-Object System.Windows.Forms.Button
 $addButton.Text = "Add 30 Minutes"
 $addButton.Location = New-Object System.Drawing.Point(150, 150)
@@ -137,11 +139,10 @@ $timer.add_Tick({
     }
     if ($script:remainingTime -le 0) {
         $timer.Stop()
-        Remove-UserFromAdmins -username $username
+        Remove-UserFromAdmins -username $username -adminGroup $adminGroup
         $form.Close()
     }
 })
-
 
 # Form Closing event
 $form.add_Closing({
@@ -153,16 +154,15 @@ $form.add_Closing({
             $timer.Start() # Restart the timer
         }
         else {
-            Remove-UserFromAdmins -username $username
+            Remove-UserFromAdmins -username $username -adminGroup $adminGroup
         }
     }
 })
 
-
-
-# Main script logic
+# Main 
 $username = Get-CurrentUser
-Add-UserToAdmins -username $username
+$adminGroup = Get-AdminGroupName
+Add-UserToAdmins -username $username -adminGroup $adminGroup
 
 # Start the timer 
 $timer.Start()
