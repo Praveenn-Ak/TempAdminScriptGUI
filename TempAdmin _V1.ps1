@@ -26,10 +26,11 @@ function Remove-DisconnectedSessions {
 Remove-DisconnectedSessions
 
 function Get-CurrentUser {
-    $explorerProcess = Get-WmiObject Win32_Process -Filter "Name='explorer.exe'"
-    $loggedOnUser = $explorerProcess.GetOwner().User
+
+    $loggedOnUser = (Get-Process -IncludeUserName -Name explorer | Select-Object UserName -Unique).username
     $loggedOnUser
-}
+
+ }
 
 function Add-UserToAdmins {
     param (
