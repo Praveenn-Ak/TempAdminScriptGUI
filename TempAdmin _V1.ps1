@@ -5,17 +5,6 @@ $timerInterval = 30
 $username = $null
 $maxTime = 360 
 
-function Get-AdminGroupName {
-    $language = (Get-WmiObject -Class Win32_OperatingSystem).MUILanguages[0]
-    if ($language -like "en-*") {
-        return "Administrators"
-    } elseif ($language -like 'fr-*') {
-        return "Administrateur"
-    } else {
-        return "Administrators"  # Default to English if the language is unknown
-    }
-}
-
 
 function Remove-DisconnectedSessions {
     
@@ -44,27 +33,26 @@ function Get-CurrentUser {
 
 function Add-UserToAdmins {
     param (
-        [string]$username,
-        [string]$adminGroup
+        [string]$username
     )
 
     if ((Get-Service -Name GroupMgmtSvc -ErrorAction SilentlyContinue).status -eq "Running" ) {  
     Set-Service -Name GroupMgmtSvc -StartupType Disabled -Status Stopped
     Get-Service -Name GroupMgmtSvc | Stop-Service -Force -ErrorAction SilentlyContinue}
 
-    Add-LocalGroupMember -Group $adminGroup -Member $username
+    Add-LocalGroupMember -SID S-1-5-32-544 -Member $username
 }
 
 function Remove-UserFromAdmins {
     param (
-        [string]$username,
-        [string]$adminGroup
+        [string]$username
+
     )
     if ((Get-Service -Name GroupMgmtSvc -ErrorAction SilentlyContinue).status -eq "Stopped"){  
     Set-Service -Name GroupMgmtSvc -StartupType Automatic -Status Running
     Get-Service -Name GroupMgmtSvc | Start-Service -ErrorAction SilentlyContinue}
 
-    Remove-LocalGroupMember -Group $adminGroup -Member $username
+    Remove-LocalGroupMember -SID S-1-5-32-544 -Member $username
 }
 
 $form = New-Object System.Windows.Forms.Form
@@ -106,7 +94,7 @@ $cancelButton.add_Click({
     $result = [System.Windows.Forms.MessageBox]::Show("Remove user from administrators group?", "Confirm", [System.Windows.Forms.MessageBoxButtons]::YesNo)
     if ($result -eq [System.Windows.Forms.DialogResult]::Yes) {
         $timer.Stop()
-        Remove-UserFromAdmins -username $username -adminGroup $adminGroup
+        Remove-UserFromAdmins -username $username 
         $form.Close()
     }
     else {
@@ -139,7 +127,7 @@ $timer.add_Tick({
     }
     if ($script:remainingTime -le 0) {
         $timer.Stop()
-        Remove-UserFromAdmins -username $username -adminGroup $adminGroup
+        Remove-UserFromAdmins -username $username 
         $form.Close()
     }
 })
@@ -154,15 +142,14 @@ $form.add_Closing({
             $timer.Start() # Restart the timer
         }
         else {
-            Remove-UserFromAdmins -username $username -adminGroup $adminGroup
+            Remove-UserFromAdmins -username $username 
         }
     }
 })
 
 # Main 
 $username = Get-CurrentUser
-$adminGroup = Get-AdminGroupName
-Add-UserToAdmins -username $username -adminGroup $adminGroup
+Add-UserToAdmins -username $username 
 
 # Start the timer 
 $timer.Start()
