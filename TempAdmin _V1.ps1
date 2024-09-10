@@ -5,20 +5,17 @@ $timerInterval = 30
 $username = $null
 $maxTime = 360 
 
-
 function Remove-DisconnectedSessions {
     
     $sessions = query user
-
-    foreach ($session in $sessions) {
-      
+    foreach ($session in $sessions) {    
         $sessionDetails = $session -split '\s+'
-        
+       
         if ($sessionDetails[3] -eq 'Disc') {
             $sessionId = $sessionDetails[2]
 
             logoff $sessionId
-            Write-Host "Disconnected session with ID $sessionId has been logged off."
+            
         }
     }
 }
@@ -26,33 +23,35 @@ function Remove-DisconnectedSessions {
 Remove-DisconnectedSessions
 
 function Get-CurrentUser {
+    $explorerProcesses = Get-WmiObject Win32_Process -Filter "Name='explorer.exe'"
+    $loggedOnUsers = @()   
+    foreach ($process in $explorerProcesses) {
+        $user = $process.GetOwner().User
+        $loggedOnUsers += $user
+    }
+    $distinctUsers = $loggedOnUsers | Select-Object -Unique
+    return $distinctUsers
+}
 
-    $loggedOnUser = (Get-Process -IncludeUserName -Name explorer | Select-Object UserName -Unique).username
-    $loggedOnUser
-
- }
 
 function Add-UserToAdmins {
     param (
         [string]$username
+
     )
 
     if ((Get-Service -Name GroupMgmtSvc -ErrorAction SilentlyContinue).status -eq "Running" ) {  
-    Set-Service -Name GroupMgmtSvc -StartupType Disabled -Status Stopped
+    Set-Service -Name GroupMgmtSvc -StartupType Disabled -Status Stopped -ErrorAction SilentlyContinue
     Get-Service -Name GroupMgmtSvc | Stop-Service -Force -ErrorAction SilentlyContinue}
 
-    Add-LocalGroupMember -SID S-1-5-32-544 -Member $username
+    if ((Get-Service -Name GroupMgmtSvc -ErrorAction SilentlyContinue).status -eq "Stopped" ){
+    Add-LocalGroupMember -SID S-1-5-32-544 -Member $username}
 }
 
 function Remove-UserFromAdmins {
     param (
         [string]$username
-
     )
-    if ((Get-Service -Name GroupMgmtSvc -ErrorAction SilentlyContinue).status -eq "Stopped"){  
-    Set-Service -Name GroupMgmtSvc -StartupType Automatic -Status Running
-    Get-Service -Name GroupMgmtSvc | Start-Service -ErrorAction SilentlyContinue}
-
     Remove-LocalGroupMember -SID S-1-5-32-544 -Member $username
 }
 
@@ -95,7 +94,7 @@ $cancelButton.add_Click({
     $result = [System.Windows.Forms.MessageBox]::Show("Remove user from administrators group?", "Confirm", [System.Windows.Forms.MessageBoxButtons]::YesNo)
     if ($result -eq [System.Windows.Forms.DialogResult]::Yes) {
         $timer.Stop()
-        Remove-UserFromAdmins -username $username 
+        Remove-UserFromAdmins -username $username
         $form.Close()
     }
     else {
@@ -150,7 +149,7 @@ $form.add_Closing({
 
 # Main 
 $username = Get-CurrentUser
-Add-UserToAdmins -username $username 
+Add-UserToAdmins -username $username
 
 # Start the timer 
 $timer.Start()
